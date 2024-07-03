@@ -17,12 +17,16 @@ limitations under the License.
 package lints
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
+	apiv1 "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
 	kmeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/ingress-nginx/cmd/plugin/util"
+	"k8s.io/ingress-nginx/internal/ingress/annotations"
+	"k8s.io/ingress-nginx/internal/ingress/resolver"
 )
 
 // IngressLint is a validation for an ingress
@@ -94,6 +98,10 @@ func GetIngressLints() []IngressLint {
 			message: "Contains an configuration-snippet that contains a Satisfy directive.\nPlease use https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#satisfy",
 			f:       satisfyDirective,
 		},
+		{
+			message: "Contains an annotation that does not pass validation. Please check the validators.",
+			f:       invalidAnnotation,
+		},
 	}
 }
 
@@ -157,4 +165,22 @@ func satisfyDirective(ing *networking.Ingress) bool {
 	}
 
 	return false
+}
+
+func invalidAnnotation(ing *networking.Ingress) bool {
+	// "from-to-www-redirect"
+	// "temporal-redirect"
+	// "permanent-redirect"
+	// "permanent-redirect-code"
+
+	type Cfg struct {
+		resolver.Mock
+		MockSecrets    map[string]*apiv1.Secret
+		MockServices   map[string]*apiv1.Service
+		MockConfigMaps map[string]*apiv1.ConfigMap
+	}
+	obj := Cfg{}
+	ec := annotations.NewAnnotationExtractor(obj)
+	_, err := ec.Extract(ing)
+	return err != nil
 }
