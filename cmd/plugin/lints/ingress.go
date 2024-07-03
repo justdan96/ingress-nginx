@@ -29,6 +29,11 @@ import (
 	"k8s.io/ingress-nginx/internal/ingress/resolver"
 )
 
+func dump(data interface{}) {
+	b, _ := json.MarshalIndent(data, "", "  ")
+	fmt.Print(string(b))
+}
+
 // IngressLint is a validation for an ingress
 type IngressLint struct {
 	message string
