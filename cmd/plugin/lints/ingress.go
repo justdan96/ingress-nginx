@@ -26,6 +26,8 @@ import (
 	kmeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/ingress-nginx/cmd/plugin/util"
 	"k8s.io/ingress-nginx/internal/ingress/annotations"
+	"k8s.io/ingress-nginx/internal/ingress/annotations/parser"
+	"k8s.io/ingress-nginx/internal/ingress/inspector"
 	"k8s.io/ingress-nginx/internal/ingress/resolver"
 )
 
@@ -104,8 +106,12 @@ func GetIngressLints() []IngressLint {
 			f:       satisfyDirective,
 		},
 		{
-			message: "Contains an annotation that does not pass validation. Please check the validators.",
-			f:       invalidAnnotation,
+			message: "Contains an annotation that does not pass validation. Please note that only the first violation is logged so there may be others.",
+			f:       validateAnnotations,
+		},
+		{
+			message: "Contains a path that does not pass validation. Please note that only the first violation is logged so there may be others.",
+			f:       invalidPath,
 		},
 	}
 }
@@ -186,6 +192,35 @@ func invalidAnnotation(ing *networking.Ingress) bool {
 	}
 	obj := Cfg{}
 	ec := annotations.NewAnnotationExtractor(obj)
+	// dump(ec)
 	_, err := ec.Extract(ing)
 	return err != nil
+}
+
+func validateAnnotations(ing *networking.Ingress) bool {
+	for annotationName := range ing.Annotations {
+		// dump(annotationName)
+		fields := parser.AnnotationFields{
+			annotationName: parser.AnnotationConfig{},
+		}
+		_, err := parser.CheckTheAnnotation(annotationName, ing, fields)
+		if err != nil {
+			fmt.Println("  X annotation validation error: " + annotationName)
+			return true
+		}
+	}
+	return false
+}
+
+func invalidPath(ing *networking.Ingress) bool {
+	// warnings := make([]string, 0)
+	if err := inspector.ValidatePathType(ing); err != nil {
+		if err != nil {
+			fmt.Println("  X " + strings.Split(err.Error(), "\n")[0])
+			return true
+			// warnings = append(warnings, err.Error())
+		}
+	}
+
+	return false
 }

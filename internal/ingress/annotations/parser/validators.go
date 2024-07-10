@@ -190,6 +190,10 @@ func ValidateServiceName(value string) error {
 	return nil
 }
 
+func CheckNamedAnnotation(name string, ing *networking.Ingress, fields AnnotationFields) (string, error) {
+	return checkAnnotation(name, ing, fields)
+}
+
 // checkAnnotation will check each annotation for:
 // 1 - Does it contain the internal validation and docs config?
 // 2 - Does the ingress contains annotations? (validate null pointers)
